@@ -4,7 +4,7 @@ Tests for HANRAG retrieval components.
 
 import pytest
 from unittest.mock import Mock, patch, MagicMock
-from langchain.schema import Document
+from langchain_core.documents import Document
 from langchain_openai.embeddings import OpenAIEmbeddings
 
 from src.models import RetrievalResult, DocumentType, HeuristicRule

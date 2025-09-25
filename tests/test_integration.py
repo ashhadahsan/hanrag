@@ -4,7 +4,8 @@ Integration tests for HANRAG system with LangChain and LangGraph.
 
 import pytest
 from unittest.mock import Mock, patch, MagicMock
-from langchain.schema import Document, HumanMessage, AIMessage
+from langchain_core.documents import Document
+from langchain_core.messages import HumanMessage, AIMessage
 from langchain_openai import ChatOpenAI
 
 from src.models import MultiHopQuery, HANRAGResponse, RetrievalResult

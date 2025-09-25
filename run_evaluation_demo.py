@@ -33,7 +33,7 @@ os.environ["EMBEDDING_MODEL"] = "text-embedding-ada-002"
 
 from evaluation.rag_evaluator import RAGEvaluator
 from evaluation.comparison_metrics import ComparisonMetrics
-from langchain.schema import Document
+from langchain_core.documents import Document
 
 
 def create_sample_documents():

@@ -8,8 +8,8 @@ import concurrent.futures
 from typing import List, Dict, Any, Optional, Tuple, Union
 from enum import Enum
 from langchain_openai import ChatOpenAI
-from langchain.schema import HumanMessage, SystemMessage
-from langchain.prompts import ChatPromptTemplate
+from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.prompts import ChatPromptTemplate
 
 from .models import RetrievalResult, ReasoningStep, MultiHopQuery, QueryType
 from .config import config

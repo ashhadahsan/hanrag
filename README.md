@@ -105,7 +105,7 @@ CONFIDENCE_THRESHOLD=0.8
 
 ```python
 from src.hanrag import HANRAGSystem
-from langchain.schema import Document
+from langchain_core.documents import Document
 
 # Initialize the HANRAG system
 hanrag = HANRAGSystem()

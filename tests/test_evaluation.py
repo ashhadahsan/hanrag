@@ -11,7 +11,7 @@ from unittest.mock import Mock, patch
 from evaluation.rag_evaluator import RAGEvaluator
 from evaluation.traditional_rag import TraditionalRAGSystem
 from evaluation.comparison_metrics import ComparisonMetrics
-from langchain.schema import Document
+from langchain_core.documents import Document
 
 
 class TestTraditionalRAGSystem:

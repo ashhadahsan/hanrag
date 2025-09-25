@@ -7,7 +7,7 @@ import numpy as np
 from typing import List, Dict, Any, Optional, Tuple
 from langchain_openai.embeddings import OpenAIEmbeddings
 from langchain_community.vectorstores import FAISS
-from langchain.schema import Document
+from langchain_core.documents import Document
 
 from .models import RetrievalResult, DocumentType, HeuristicRule
 from .config import config

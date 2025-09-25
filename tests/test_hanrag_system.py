@@ -4,7 +4,7 @@ Tests for HANRAG system integration.
 
 import pytest
 from unittest.mock import Mock, patch, MagicMock
-from langchain.schema import Document
+from langchain_core.documents import Document
 
 from src.models import (
     MultiHopQuery,

@@ -13,7 +13,7 @@ import seaborn as sns
 from evaluation.traditional_rag import TraditionalRAGSystem
 from .comparison_metrics import ComparisonMetrics
 from src.hanrag import HANRAGSystem
-from langchain.schema import Document
+from langchain_core.documents import Document
 
 
 class RAGEvaluator:

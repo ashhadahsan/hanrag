@@ -8,6 +8,7 @@ from langgraph.graph import StateGraph, END
 from langgraph.graph.message import add_messages
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, SystemMessage
 from langchain_openai import ChatOpenAI
+from langchain_community.callbacks.manager import get_openai_callback
 
 from .models import (
     MultiHopQuery,
@@ -280,7 +281,7 @@ class HANRAGLangGraphWorkflow:
         return state
 
     def run_workflow(self, question: str) -> HANRAGResponse:
-        """Run the complete workflow for a question."""
+        """Run the complete workflow for a question with LangSmith tracing."""
         # Initialize state
         initial_state = HANRAGState(
             messages=[HumanMessage(content=question)],
@@ -298,11 +299,25 @@ class HANRAGLangGraphWorkflow:
             processing_metadata={},
         )
 
-        # Run the workflow
-        final_state = self.graph.invoke(initial_state)
+        # Run the workflow with LangSmith tracing
+        with get_openai_callback() as cb:
+            final_state = self.graph.invoke(initial_state)
 
         # Extract and return the HANRAG response
-        return final_state["processing_metadata"]["hanrag_response"]
+        response = final_state["processing_metadata"]["hanrag_response"]
+
+        # Add token usage information to metadata
+        if hasattr(response, "metadata"):
+            response.metadata.update(
+                {
+                    "total_tokens": cb.total_tokens,
+                    "prompt_tokens": cb.prompt_tokens,
+                    "completion_tokens": cb.completion_tokens,
+                    "total_cost": cb.total_cost,
+                }
+            )
+
+        return response
 
 
 class ConversationalHANRAGWorkflow(HANRAGLangGraphWorkflow):

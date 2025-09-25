@@ -3,13 +3,9 @@ LangChain integration for HANRAG system.
 Provides document processing, text splitting, and LLM interaction utilities.
 """
 
-from typing import List, Dict, Any, Optional, Union
-from langchain.schema import Document, BaseMessage
-from langchain.text_splitter import (
-    RecursiveCharacterTextSplitter,
-    CharacterTextSplitter,
-    TokenTextSplitter,
-)
+from typing import List, Dict, Any, Optional
+from langchain_core.documents import Document
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.document_loaders import (
     TextLoader,
     PyPDFLoader,
@@ -17,12 +13,20 @@ from langchain_community.document_loaders import (
     DirectoryLoader,
 )
 from langchain_openai.embeddings import OpenAIEmbeddings
-from langchain.embeddings.huggingface import HuggingFaceEmbeddings
+from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_community.vectorstores import FAISS, Chroma
-from langchain.chains import RetrievalQA, ConversationalRetrievalChain
-from langchain.memory import ConversationBufferMemory
-from langchain.prompts import PromptTemplate
-from langchain.callbacks import StreamingStdOutCallbackHandler
+from langchain_core.prompts import (
+    PromptTemplate,
+    ChatPromptTemplate,
+    MessagesPlaceholder,
+)
+from langchain_core.callbacks import StreamingStdOutCallbackHandler
+from langchain_community.callbacks.manager import get_openai_callback
+from langchain_core.tracers import LangChainTracer
+from langchain_core.output_parsers import StrOutputParser
+from langchain_core.runnables import RunnablePassthrough
+from langchain.chains import create_retrieval_chain, create_history_aware_retriever
+from langchain.chains.combine_documents import create_stuff_documents_chain
 
 from .models import RetrievalResult, DocumentType
 from .config import config
@@ -181,10 +185,8 @@ class LangChainRetriever:
         else:
             raise ValueError(f"Unsupported vectorstore type: {vs_type}")
 
-    def create_retrieval_chain(
-        self, chain_type: str = "stuff", return_source_documents: bool = True
-    ) -> None:
-        """Create a retrieval chain for question answering."""
+    def create_retrieval_chain(self, llm) -> None:
+        """Create a modern LCEL-based retrieval chain for question answering."""
         if not self.vectorstore:
             raise ValueError("Vector store not created. Call create_vectorstore first.")
 
@@ -210,19 +212,22 @@ class LangChainRetriever:
             template=prompt_template, input_variables=["context", "question"]
         )
 
-        # Create retrieval chain
-        self.retrieval_chain = RetrievalQA.from_chain_type(
-            llm=None,  # Will be set when used
-            chain_type=chain_type,
-            retriever=retriever,
-            return_source_documents=return_source_documents,
-            chain_type_kwargs={"prompt": prompt},
+        # Create modern LCEL-based retrieval chain
+        def format_docs(docs):
+            return "\n\n".join(doc.page_content for doc in docs)
+
+        self.retrieval_chain = (
+            {
+                "context": retriever | format_docs,
+                "question": RunnablePassthrough(),
+            }
+            | prompt
+            | llm
+            | StrOutputParser()
         )
 
-    def create_conversational_chain(
-        self, llm, chain_type: str = "stuff"
-    ) -> ConversationalRetrievalChain:
-        """Create a conversational retrieval chain."""
+    def create_conversational_chain(self, llm) -> dict:
+        """Create a modern conversational retrieval chain using create_history_aware_retriever."""
         if not self.vectorstore:
             raise ValueError("Vector store not created. Call create_vectorstore first.")
 
@@ -231,51 +236,88 @@ class LangChainRetriever:
             search_type="similarity", search_kwargs={"k": config.top_k_documents}
         )
 
-        # Create memory
-        memory = ConversationBufferMemory(
-            memory_key="chat_history", return_messages=True
+        # Create prompt for generating search queries based on conversation history
+        contextualize_q_prompt = ChatPromptTemplate.from_messages(
+            [
+                MessagesPlaceholder(variable_name="chat_history"),
+                ("user", "{input}"),
+                (
+                    "user",
+                    "Given the above conversation, generate a search query to look up in order to get information relevant to the conversation",
+                ),
+            ]
         )
 
-        # Create conversational chain
-        conversational_chain = ConversationalRetrievalChain.from_llm(
-            llm=llm,
-            retriever=retriever,
-            memory=memory,
-            chain_type=chain_type,
-            return_source_documents=True,
+        # Create history-aware retriever
+        history_aware_retriever = create_history_aware_retriever(
+            llm, retriever, contextualize_q_prompt
         )
 
-        return conversational_chain
+        # Create prompt for answering questions based on retrieved context
+        qa_prompt = ChatPromptTemplate.from_messages(
+            [
+                (
+                    "system",
+                    "Answer the user's questions based on the below context:\n\n{context}",
+                ),
+                MessagesPlaceholder(variable_name="chat_history"),
+                ("user", "{input}"),
+            ]
+        )
+
+        # Create document chain
+        document_chain = create_stuff_documents_chain(llm, qa_prompt)
+
+        # Create the conversational retrieval chain
+        conversational_chain = create_retrieval_chain(
+            history_aware_retriever, document_chain
+        )
+
+        return {"chain": conversational_chain, "retriever": history_aware_retriever}
 
     def similarity_search(self, query: str, k: int = None) -> List[Document]:
-        """Perform similarity search."""
+        """Perform similarity search with LangSmith tracing."""
         if not self.vectorstore:
             raise ValueError("Vector store not created.")
 
         k = k or config.top_k_documents
-        return self.vectorstore.similarity_search(query, k=k)
+
+        # Use LangSmith tracing for similarity search
+        with get_openai_callback() as cb:
+            results = self.vectorstore.similarity_search(query, k=k)
+
+        return results
 
     def similarity_search_with_score(self, query: str, k: int = None) -> List[tuple]:
-        """Perform similarity search with scores."""
+        """Perform similarity search with scores and LangSmith tracing."""
         if not self.vectorstore:
             raise ValueError("Vector store not created.")
 
         k = k or config.top_k_documents
-        return self.vectorstore.similarity_search_with_score(query, k=k)
+
+        # Use LangSmith tracing for similarity search with scores
+        with get_openai_callback() as cb:
+            results = self.vectorstore.similarity_search_with_score(query, k=k)
+
+        return results
 
     def max_marginal_relevance_search(
         self, query: str, k: int = None, fetch_k: int = None
     ) -> List[Document]:
-        """Perform MMR search for diverse results."""
+        """Perform MMR search for diverse results with LangSmith tracing."""
         if not self.vectorstore:
             raise ValueError("Vector store not created.")
 
         k = k or config.top_k_documents
         fetch_k = fetch_k or k * 2
 
-        return self.vectorstore.max_marginal_relevance_search(
-            query, k=k, fetch_k=fetch_k
-        )
+        # Use LangSmith tracing for MMR search
+        with get_openai_callback() as cb:
+            results = self.vectorstore.max_marginal_relevance_search(
+                query, k=k, fetch_k=fetch_k
+            )
+
+        return results
 
 
 class LangChainHANRAGIntegration:
@@ -335,31 +377,40 @@ class LangChainHANRAGIntegration:
         self.hanrag_system.add_knowledge_base(chunked_documents)
 
     def create_hybrid_retrieval_chain(self, llm):
-        """Create a hybrid retrieval chain combining HANRAG and LangChain."""
+        """Create a hybrid retrieval chain combining HANRAG and LangChain using modern LCEL."""
         # Create LangChain retrieval chain
-        langchain_chain = self.langchain_retriever.create_conversational_chain(llm)
+        langchain_result = self.langchain_retriever.create_conversational_chain(llm)
+        langchain_chain = langchain_result["chain"]
 
         # Create hybrid chain that uses both systems
         class HybridRetrievalChain:
             def __init__(self, hanrag_system, langchain_chain):
                 self.hanrag_system = hanrag_system
                 self.langchain_chain = langchain_chain
+                self.chat_history = []  # Simple chat history storage
 
-            def __call__(self, inputs):
-                question = inputs["question"]
-
+            def __call__(self, question: str):
                 # Get HANRAG response
                 hanrag_response = self.hanrag_system.answer_question(question)
 
-                # Get LangChain response
-                langchain_response = self.langchain_chain(inputs)
+                # Get LangChain response using modern LCEL
+                langchain_result = self.langchain_chain.invoke(
+                    {"input": question, "chat_history": self.chat_history}
+                )
+                langchain_answer = langchain_result["answer"]
+
+                # Update chat history
+                self.chat_history.append({"role": "user", "content": question})
+                self.chat_history.append(
+                    {"role": "assistant", "content": langchain_answer}
+                )
 
                 # Combine responses (simplified approach)
                 combined_answer = f"""
                 HANRAG Answer: {hanrag_response.answer}
                 Confidence: {hanrag_response.confidence:.3f}
                 
-                LangChain Answer: {langchain_response['answer']}
+                LangChain Answer: {langchain_answer}
                 
                 Reasoning Steps: {len(hanrag_response.reasoning_chain)} steps
                 """
@@ -367,7 +418,7 @@ class LangChainHANRAGIntegration:
                 return {
                     "answer": combined_answer,
                     "hanrag_response": hanrag_response,
-                    "langchain_response": langchain_response,
+                    "langchain_response": langchain_answer,
                 }
 
         return HybridRetrievalChain(self.hanrag_system, langchain_chain)

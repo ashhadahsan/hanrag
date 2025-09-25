@@ -4,11 +4,9 @@ Implements accurate answer generation with confidence estimation.
 """
 
 import time
-from typing import List, Dict, Any, Optional, Tuple
+from typing import List, Optional, Tuple
 from langchain_openai import ChatOpenAI
-from langchain.schema import HumanMessage, SystemMessage, AIMessage
-from langchain.prompts import ChatPromptTemplate, PromptTemplate
-from langchain.callbacks.manager import CallbackManagerForLLMRun
+from langchain_core.prompts import ChatPromptTemplate
 
 from .models import (
     RetrievalResult,

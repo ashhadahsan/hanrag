@@ -5,7 +5,7 @@ Pytest configuration and fixtures for HANRAG tests.
 import pytest
 import os
 from unittest.mock import Mock, patch
-from langchain.schema import Document
+from langchain_core.documents import Document
 
 # Set test environment variables
 os.environ["OPENAI_API_KEY"] = "test-api-key"
@@ -140,7 +140,7 @@ def sample_multi_hop_query():
 def mock_openai_llm():
     """Mock OpenAI LLM for testing."""
     from langchain_openai import ChatOpenAI
-    from langchain.schema import AIMessage
+    from langchain_core.messages import AIMessage
 
     mock_llm = Mock(spec=ChatOpenAI)
     mock_llm.invoke.return_value = AIMessage(content="Test response from LLM")
@@ -150,7 +150,7 @@ def mock_openai_llm():
 @pytest.fixture
 def mock_embeddings():
     """Mock embeddings for testing."""
-    from langchain.embeddings import OpenAIEmbeddings
+    from langchain_openai.embeddings import OpenAIEmbeddings
 
     mock_emb = Mock(spec=OpenAIEmbeddings)
     mock_emb.embed_documents.return_value = [[0.1, 0.2, 0.3], [0.4, 0.5, 0.6]]
@@ -161,7 +161,7 @@ def mock_embeddings():
 @pytest.fixture
 def mock_vectorstore():
     """Mock vector store for testing."""
-    from langchain.schema import Document
+    from langchain_core.documents import Document
 
     mock_vs = Mock()
     mock_vs.similarity_search.return_value = [

@@ -34,7 +34,7 @@ class HANRAGConfig(BaseSettings):
     confidence_threshold: float = Field(0.8, env="CONFIDENCE_THRESHOLD")
 
     # LangSmith Configuration
-    langsmith_tracing: bool = Field(False, env="LANGSMITH_TRACING")
+    langsmith_tracing: bool = Field(True, env="LANGSMITH_TRACING")
 
     class Config:
         env_file = ".env"
@@ -43,3 +43,20 @@ class HANRAGConfig(BaseSettings):
 
 # Global configuration instance
 config = HANRAGConfig()
+
+
+def setup_langsmith_tracing():
+    """Setup LangSmith tracing if enabled and API key is provided."""
+    if config.langsmith_tracing and config.langsmith_api_key:
+        os.environ["LANGCHAIN_TRACING_V2"] = "true"
+        os.environ["LANGCHAIN_API_KEY"] = config.langsmith_api_key
+        os.environ["LANGCHAIN_PROJECT"] = "HANRAG-System"
+        print("✅ LangSmith tracing enabled (v2)")
+    else:
+        print(
+            "ℹ️  LangSmith tracing disabled (set LANGSMITH_TRACING=true and LANGSMITH_API_KEY to enable)"
+        )
+
+
+# Automatically setup tracing when config is imported
+setup_langsmith_tracing()

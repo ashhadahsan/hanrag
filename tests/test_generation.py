@@ -5,7 +5,7 @@ Tests for HANRAG generation components.
 import pytest
 from unittest.mock import Mock, patch, MagicMock
 from langchain_openai import ChatOpenAI
-from langchain.schema import AIMessage
+from langchain_core.messages import AIMessage
 
 from src.models import (
     RetrievalResult,

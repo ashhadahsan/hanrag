@@ -3,7 +3,7 @@ Example demonstrating the Revelator components in HANRAG.
 """
 
 import os
-from langchain.schema import Document
+from langchain_core.documents import Document
 from src.hanrag import HANRAGSystem
 from src.models import QueryType
 

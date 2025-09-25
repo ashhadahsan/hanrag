@@ -14,6 +14,8 @@ class DocumentType(str, Enum):
     WIKIPEDIA = "wikipedia"
     SCIENTIFIC_PAPER = "scientific_paper"
     NEWS_ARTICLE = "news_article"
+    DEFINITION = "definition"
+    SCIENCE = "science"
 
 
 class QueryType(str, Enum):

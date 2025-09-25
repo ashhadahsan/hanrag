@@ -5,7 +5,7 @@ Tests for Revelator components.
 import pytest
 import asyncio
 from unittest.mock import Mock, patch, MagicMock
-from langchain.schema import AIMessage
+from langchain_core.messages import AIMessage
 
 from src.models import QueryType, RetrievalResult, ReasoningStep
 from src.revelator import Revelator

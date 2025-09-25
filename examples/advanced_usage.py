@@ -3,9 +3,14 @@ Advanced usage examples for HANRAG system.
 """
 
 import os
+import sys
 import time
 from typing import List, Dict, Any
-from langchain.schema import Document
+
+# Add the parent directory to the path so we can import from src
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from langchain_core.documents import Document
 from src.hanrag import HANRAGSystem
 from src.langchain_integration import LangChainHANRAGIntegration
 from src.langgraph_integration import ConversationalHANRAGWorkflow
@@ -24,7 +29,7 @@ def example_custom_heuristic_rules():
             page_content="Recent research shows that transformer models have achieved breakthrough results in natural language processing tasks.",
             metadata={
                 "id": "doc1",
-                "type": "research",
+                "type": "scientific_paper",
                 "domain": "nlp",
                 "year": "2024",
                 "recent": True,
@@ -35,7 +40,7 @@ def example_custom_heuristic_rules():
             page_content="Older research from 2020 showed that RNNs were commonly used for sequence modeling tasks.",
             metadata={
                 "id": "doc2",
-                "type": "research",
+                "type": "scientific_paper",
                 "domain": "nlp",
                 "year": "2020",
                 "recent": False,
@@ -46,7 +51,7 @@ def example_custom_heuristic_rules():
             page_content="Machine learning applications in healthcare have shown promising results for medical diagnosis.",
             metadata={
                 "id": "doc3",
-                "type": "application",
+                "type": "news_article",
                 "domain": "healthcare",
                 "year": "2023",
                 "recent": True,
@@ -82,15 +87,15 @@ def example_confidence_threshold_tuning():
     documents = [
         Document(
             page_content="Machine learning is a subset of artificial intelligence.",
-            metadata={"id": "doc1", "type": "definition"},
+            metadata={"id": "doc1", "type": "text"},
         ),
         Document(
             page_content="Deep learning uses neural networks with multiple layers.",
-            metadata={"id": "doc2", "type": "definition"},
+            metadata={"id": "doc2", "type": "text"},
         ),
         Document(
             page_content="Natural language processing enables computers to understand human language.",
-            metadata={"id": "doc3", "type": "definition"},
+            metadata={"id": "doc3", "type": "text"},
         ),
     ]
 
@@ -103,8 +108,10 @@ def example_confidence_threshold_tuning():
 
     for threshold in confidence_thresholds:
         # Temporarily modify the confidence threshold
-        original_threshold = hanrag.generator.confidence_threshold
-        hanrag.generator.confidence_threshold = threshold
+        from src.config import config
+
+        original_threshold = config.confidence_threshold
+        config.confidence_threshold = threshold
 
         response = hanrag.answer_question(question)
 
@@ -115,7 +122,7 @@ def example_confidence_threshold_tuning():
         print()
 
         # Restore original threshold
-        hanrag.generator.confidence_threshold = original_threshold
+        config.confidence_threshold = original_threshold
 
 
 def example_noise_detection_analysis():
@@ -127,11 +134,11 @@ def example_noise_detection_analysis():
     documents = [
         Document(
             page_content="Artificial intelligence is a broad field that encompasses machine learning, natural language processing, and computer vision.",
-            metadata={"id": "doc1", "type": "overview"},
+            metadata={"id": "doc1", "type": "text"},
         ),
         Document(
             page_content="Machine learning algorithms can be supervised, unsupervised, or reinforcement learning approaches.",
-            metadata={"id": "doc2", "type": "technical"},
+            metadata={"id": "doc2", "type": "text"},
         ),
     ]
 
@@ -173,7 +180,7 @@ def example_performance_benchmarking():
         doc = Document(
             page_content=f"Document {i}: This is a comprehensive document about artificial intelligence, machine learning, and related technologies. "
             * 20,
-            metadata={"id": f"doc_{i}", "type": "technical", "domain": "ai"},
+            metadata={"id": f"doc_{i}", "type": "text", "domain": "ai"},
         )
         documents.append(doc)
 
@@ -228,19 +235,19 @@ def example_conversational_workflow():
     documents = [
         Document(
             page_content="Python is a versatile programming language used in data science, web development, and artificial intelligence.",
-            metadata={"id": "doc1", "type": "programming"},
+            metadata={"id": "doc1", "type": "text"},
         ),
         Document(
             page_content="NumPy is a fundamental library for numerical computing in Python, providing support for large arrays and matrices.",
-            metadata={"id": "doc2", "type": "library"},
+            metadata={"id": "doc2", "type": "text"},
         ),
         Document(
             page_content="Pandas is a powerful data manipulation library built on top of NumPy, providing data structures for structured data analysis.",
-            metadata={"id": "doc3", "type": "library"},
+            metadata={"id": "doc3", "type": "text"},
         ),
         Document(
             page_content="Scikit-learn is a machine learning library for Python that provides simple and efficient tools for data mining and analysis.",
-            metadata={"id": "doc4", "type": "library"},
+            metadata={"id": "doc4", "type": "text"},
         ),
     ]
 
@@ -285,16 +292,16 @@ def example_custom_retrieval_strategies():
     documents = [
         Document(
             page_content="Short document about AI.",
-            metadata={"id": "doc1", "type": "short", "length": "short"},
+            metadata={"id": "doc1", "type": "text", "length": "short"},
         ),
         Document(
             page_content="This is a medium-length document that provides a comprehensive overview of machine learning concepts, including supervised learning, unsupervised learning, and reinforcement learning approaches. It covers the basic principles and applications of each type.",
-            metadata={"id": "doc2", "type": "medium", "length": "medium"},
+            metadata={"id": "doc2", "type": "text", "length": "medium"},
         ),
         Document(
             page_content="This is a very long and detailed document that provides an extensive analysis of artificial intelligence, machine learning, deep learning, natural language processing, computer vision, and other related fields. It includes historical context, current developments, future prospects, technical details, implementation considerations, and real-world applications. The document covers various algorithms, architectures, frameworks, and tools used in the field. It also discusses challenges, limitations, and ethical considerations in AI development and deployment. This comprehensive resource serves as a complete guide for understanding the breadth and depth of artificial intelligence research and applications."
             * 3,
-            metadata={"id": "doc3", "type": "long", "length": "long"},
+            metadata={"id": "doc3", "type": "text", "length": "long"},
         ),
     ]
 
@@ -376,11 +383,11 @@ def example_custom_models():
     documents = [
         Document(
             page_content="Advanced machine learning techniques include ensemble methods, deep learning, and reinforcement learning.",
-            metadata={"id": "doc1", "type": "advanced"},
+            metadata={"id": "doc1", "type": "text"},
         ),
         Document(
             page_content="Ensemble methods combine multiple models to improve prediction accuracy and robustness.",
-            metadata={"id": "doc2", "type": "technique"},
+            metadata={"id": "doc2", "type": "text"},
         ),
     ]
 
@@ -406,7 +413,7 @@ def example_custom_models():
     print()
 
 
-if __name__ == "__main__":
+def main():
     # Check if API key is set
     if not os.getenv("OPENAI_API_KEY"):
         print("Please set your OPENAI_API_KEY environment variable")
@@ -423,3 +430,10 @@ if __name__ == "__main__":
     example_custom_models()
 
     print("All advanced examples completed successfully!")
+
+
+if __name__ == "__main__":
+    from dotenv import load_dotenv
+
+    load_dotenv()
+    main()

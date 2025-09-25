@@ -6,8 +6,9 @@ Integrates retrieval, generation, and noise resistance components.
 import time
 import asyncio
 from typing import List, Dict, Any, Optional, Tuple
-from langchain.schema import Document
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_core.documents import Document
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_community.callbacks.manager import get_openai_callback
 
 from .models import (
     MultiHopQuery,
@@ -65,25 +66,37 @@ class HANRAGSystem:
         max_hops = max_hops or self.max_hops
         start_time = time.time()
 
-        # Step 1: Route the query using Revelator
-        query_type = self.revelator.route_query(question)
+        # Use LangSmith tracing for the entire question answering process
+        with get_openai_callback() as cb:
+            # Step 1: Route the query using Revelator
+            query_type = self.revelator.route_query(question)
 
-        # Step 2: Process based on query type
-        if query_type == QueryType.STRAIGHTFORWARD:
-            response = self._handle_straightforward_query(question)
-        elif query_type == QueryType.SINGLE_STEP:
-            response = self._handle_single_step_query(question)
-        elif query_type == QueryType.COMPOUND:
-            response = self._handle_compound_query(question)
-        elif query_type == QueryType.COMPLEX:
-            response = self._handle_complex_query(question, max_hops)
-        else:
-            # Fallback to single-step
-            response = self._handle_single_step_query(question)
+            # Step 2: Process based on query type
+            if query_type == QueryType.STRAIGHTFORWARD:
+                response = self._handle_straightforward_query(question)
+            elif query_type == QueryType.SINGLE_STEP:
+                response = self._handle_single_step_query(question)
+            elif query_type == QueryType.COMPOUND:
+                response = self._handle_compound_query(question)
+            elif query_type == QueryType.COMPLEX:
+                response = self._handle_complex_query(question, max_hops)
+            else:
+                # Fallback to single-step
+                response = self._handle_single_step_query(question)
 
-        # Update processing time
-        response.processing_time = time.time() - start_time
-        response.metadata["query_type"] = query_type.value
+            # Update processing time
+            response.processing_time = time.time() - start_time
+            response.metadata["query_type"] = query_type.value
+
+            # Add token usage information to metadata
+            response.metadata.update(
+                {
+                    "total_tokens": cb.total_tokens,
+                    "prompt_tokens": cb.prompt_tokens,
+                    "completion_tokens": cb.completion_tokens,
+                    "total_cost": cb.total_cost,
+                }
+            )
 
         return response
 

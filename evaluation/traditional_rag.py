@@ -4,13 +4,14 @@ Traditional RAG system implementation for comparison with HANRAG.
 
 import time
 from typing import List, Dict, Any, Optional
-from langchain.schema import Document
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_core.documents import Document
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_openai.embeddings import OpenAIEmbeddings
 from langchain_community.vectorstores import FAISS
 from langchain_openai import ChatOpenAI
-from langchain.prompts import PromptTemplate
-from langchain.chains import RetrievalQA
+from langchain_core.prompts import PromptTemplate
+from langchain_core.output_parsers import StrOutputParser
+from langchain_core.runnables import RunnablePassthrough
 
 from src.models import RetrievalResult, DocumentType
 
@@ -56,12 +57,20 @@ class TraditionalRAGSystem:
         # Create vector store
         self.vectorstore = FAISS.from_documents(chunks, self.embeddings)
 
-        # Create QA chain
-        self.qa_chain = RetrievalQA.from_chain_type(
-            llm=self.llm,
-            chain_type="stuff",
-            retriever=self.vectorstore.as_retriever(search_kwargs={"k": 5}),
-            chain_type_kwargs={"prompt": self.prompt_template},
+        # Create modern LCEL-based QA chain
+        retriever = self.vectorstore.as_retriever(search_kwargs={"k": 5})
+
+        def format_docs(docs):
+            return "\n\n".join(doc.page_content for doc in docs)
+
+        self.qa_chain = (
+            {
+                "context": retriever | format_docs,
+                "question": RunnablePassthrough(),
+            }
+            | self.prompt_template
+            | self.llm
+            | StrOutputParser()
         )
 
     def answer_question(self, question: str) -> Dict[str, Any]:
@@ -81,9 +90,8 @@ class TraditionalRAGSystem:
 
         start_time = time.time()
 
-        # Get answer from QA chain
-        result = self.qa_chain.invoke({"query": question})
-        answer = result["result"]
+        # Get answer from modern LCEL chain
+        answer = self.qa_chain.invoke(question)
 
         # Get retrieved documents
         retrieved_docs = self.vectorstore.similarity_search(question, k=5)

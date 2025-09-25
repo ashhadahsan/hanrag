@@ -3,7 +3,7 @@ Basic usage examples for HANRAG system.
 """
 
 import os
-from langchain.schema import Document
+from langchain_core.documents import Document
 from src.hanrag import HANRAGSystem
 from src.langchain_integration import LangChainHANRAGIntegration
 from src.langgraph_integration import HANRAGLangGraphWorkflow
@@ -294,7 +294,10 @@ def example_system_evaluation():
     print()
 
 
-if __name__ == "__main__":
+def main():
+    from dotenv import load_dotenv
+
+    load_dotenv()
     # Check if API key is set
     if not os.getenv("OPENAI_API_KEY"):
         print("Please set your OPENAI_API_KEY environment variable")
@@ -310,3 +313,7 @@ if __name__ == "__main__":
     example_system_evaluation()
 
     print("All examples completed successfully!")
+
+
+if __name__ == "__main__":
+    main()
